@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <EEPROM.h>
@@ -12,18 +11,18 @@ int ledBombaPin = 13;
 long consumo = 0;
 bool enchendo = false;
 
-int nivelTravado = 0;
 int nivelAlvo = 0;
 
 // Variável para a "Detecção de Borda" dos botões
 bool estadoAnterior[5] = {LOW, LOW, LOW, LOW, LOW};
 
-// EEPROM endereços
+// EEPROM endereços e controlo de tempo
 int addrConsumo = 0;
 int addrNivel = 10;
+unsigned long tempoUltimoSave = 0;
 
 void setup() {
-  lcd.init(); // Se no VS Code der erro, troque por lcd.begin()
+  lcd.init(); // Troque por lcd.begin() se der erro no VS Code
   lcd.backlight();
   Serial.begin(9600);
 
@@ -34,15 +33,21 @@ void setup() {
   pinMode(ledBombaPin, OUTPUT); 
   digitalWrite(ledBombaPin, LOW); 
 
-  // Recupera dados salvos
+  // Recupera dados guardados da memória
   EEPROM.get(addrConsumo, consumo);
   EEPROM.get(addrNivel, nivelAlvo);
+
+  // Trava de segurança: Se a memória estiver corrompida ou virgem de fábrica
+  if(consumo < 0 || consumo > 10000 || nivelAlvo < 0 || nivelAlvo > 100){
+    consumo = 0;
+    nivelAlvo = 0;
+  }
 }
 
 void loop() {
   int novoNivel = 0;
 
-  // 1. LEITURA DOS BOTÕES
+  // 1. LEITURA DOS BOTÕES (Apenas no clique)
   for(int i = 0; i < 5; i++){
     bool estadoAtual = digitalRead(nivelPins[i]);
     
