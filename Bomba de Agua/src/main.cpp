@@ -139,20 +139,22 @@ void loop() {
 
   // 5. GUARDAR NA EEPROM (Agora a cada 0.5 segundos)
   // 500 milissegundos = 0.5 segundos
-  if (enchendo && (millis() - tempoUltimoSave >= 500)) {
+ //ALTERADO: O sistema continua salvando na memória mesmo se estiver esvaziando com o LED apagado
+  bool sistemaAtivo = (enchendo || esvaziando);
+  
+  if (sistemaAtivo && (millis() - tempoUltimoSave >= 500)) {
     EEPROM.put(addrConsumo, consumo);
     EEPROM.put(addrNivel, nivelAlvo);
     tempoUltimoSave = millis();
   }
   
-  // Garante que guarda também no exato momento em que pausar ou atingir a meta
-  static bool estadoAnteriorEnchendo = false;
-  if (estadoAnteriorEnchendo == true && enchendo == false) {
+  static bool estadoAnteriorSistema = false;
+  if (estadoAnteriorSistema == true && sistemaAtivo == false) {
     EEPROM.put(addrConsumo, consumo);
     EEPROM.put(addrNivel, nivelAlvo);
-    tempoUltimoSave = millis(); // Reinicia o cronómetro
+    tempoUltimoSave = millis(); 
   }
-  estadoAnteriorEnchendo = enchendo;
+  estadoAnteriorSistema = sistemaAtivo;
 
   // 6. DISPLAY (Ecrã)
   lcd.clear();

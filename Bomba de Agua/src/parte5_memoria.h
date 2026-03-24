@@ -1,4 +1,4 @@
- ALTERADO: O sistema continua salvando na memória mesmo se estiver esvaziando com o LED apagado
+ // ALTERADO: O sistema continua salvando na memória mesmo se estiver esvaziando com o LED apagado
   bool sistemaAtivo = (enchendo || esvaziando);
   
   if (sistemaAtivo && (millis() - tempoUltimoSave >= 500)) {
