@@ -160,7 +160,7 @@ void loop() {
   }
 
   // 4. ATUALIZAR O LED (Bomba) 
-  // 🟡 ALTERADO: O LED só liga se estiver enchendo!
+  //  ALTERADO: O LED só liga se estiver enchendo!
   if(enchendo){
     digitalWrite(ledBombaPin, HIGH); 
   } else {
@@ -168,7 +168,7 @@ void loop() {
   }
 
   // 5. GUARDAR NA EEPROM 
-  // 🟡 ALTERADO: O sistema continua salvando na memória mesmo se estiver esvaziando com o LED apagado
+  //  ALTERADO: O sistema continua salvando na memória mesmo se estiver esvaziando com o LED apagado
   bool sistemaAtivo = (enchendo || esvaziando);
   
   if (sistemaAtivo && (millis() - tempoUltimoSave >= 500)) {
