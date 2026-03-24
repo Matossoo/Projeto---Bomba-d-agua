@@ -185,7 +185,7 @@ void loop() {
   }
   estadoAnteriorSistema = sistemaAtivo;
 
-  // 6. DISPLAY (Ecrã)
+  // 6. DISPLAY (Tela)
   lcd.clear();
 
   lcd.setCursor(0,0);
