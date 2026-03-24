@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <EEPROM.h>
@@ -11,6 +10,7 @@ int ledBombaPin = 13;
 
 long consumo = 0;
 bool enchendo = false;
+bool esvaziando = false; 
 
 int nivelAlvo = 0;
 
@@ -23,7 +23,7 @@ int addrNivel = 10;
 unsigned long tempoUltimoSave = 0;
 
 void setup() {
-  lcd.init(); // Troque por lcd.begin() se der erro no VS Code
+  lcd.init(); 
   lcd.backlight();
   Serial.begin(9600);
 
@@ -67,26 +67,17 @@ void loop() {
   // 2. LÓGICA DE DEFINIR ALVO OU PAUSAR
   if(novoNivel > 0){
     
-    // REGRA 1: NÃO PODE DIMINUIR
-    if(novoNivel < nivelAlvo){
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("ERRO:");
-      lcd.setCursor(0,1);
-      lcd.print("Nivel menor!");
-      delay(2000);
-      return; 
-    }
-    
-    // REGRA 3: PAUSAR OU RETOMAR O NÍVEL ATUAL
-    else if(novoNivel == nivelAlvo){
+    // PAUSAR OU RETOMAR O NÍVEL ATUAL
+    if(novoNivel == nivelAlvo){
       long metaLitros = nivelAlvo * 100;
       if (consumo < metaLitros) { 
         enchendo = !enchendo; 
+      } else if (consumo > metaLitros) { 
+        esvaziando = !esvaziando; 
       }
     }
     
-    // REGRA 4: AVANÇAR DE NÍVEL (Apenas em sequência)
+    // AVANÇAR DE NÍVEL (Subindo)
     else if(novoNivel > nivelAlvo){
       
       int nivelAnteriorNecessario = 0;
@@ -103,6 +94,35 @@ void loop() {
       if (nivelAlvo == nivelAnteriorNecessario && consumo >= litrosNecessarios) {
         nivelAlvo = novoNivel;
         enchendo = true;
+        esvaziando = false; 
+      } else {
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("ERRO: Sequencia");
+        lcd.setCursor(0,1);
+        lcd.print("Invalida!");
+        delay(2000);
+        return; 
+      }
+    }
+
+    // RETROCEDER DE NÍVEL (Esvaziando)
+    else if(novoNivel < nivelAlvo){
+      
+      int nivelAcimaNecessario = 0;
+      switch(novoNivel){
+        case 70: nivelAcimaNecessario = 90; break;
+        case 50: nivelAcimaNecessario = 70; break;
+        case 30: nivelAcimaNecessario = 50; break;
+        case 10: nivelAcimaNecessario = 30; break;
+      }
+
+      long litrosNecessarios = nivelAcimaNecessario * 100;
+
+      if (nivelAlvo == nivelAcimaNecessario && consumo <= litrosNecessarios) {
+        nivelAlvo = novoNivel;
+        esvaziando = true;
+        enchendo = false; 
       } else {
         lcd.clear();
         lcd.setCursor(0,0);
@@ -117,11 +137,16 @@ void loop() {
 
   long metaLitros = nivelAlvo * 100;
 
-  // 3. CALCULAR CONSUMO
+  // 3. CALCULAR CONSUMO 
   if(enchendo){
     int vazao = analogRead(vazaoPin);
     int incremento = map(vazao, 0, 1023, 0, 100);
     consumo += incremento;
+  } 
+  else if (esvaziando){
+    int vazao = analogRead(vazaoPin);
+    int incremento = map(vazao, 0, 1023, 0, 100);
+    consumo -= incremento;
   }
 
   // Parar ao atingir a meta
@@ -129,17 +154,21 @@ void loop() {
     enchendo = false;
     consumo = metaLitros; 
   }
+  if(esvaziando && consumo <= metaLitros){
+    esvaziando = false;
+    consumo = metaLitros; 
+  }
 
-  // 4. ATUALIZAR O LED (Bomba)
+  // 4. ATUALIZAR O LED (Bomba) 
+  // 🟡 ALTERADO: O LED só liga se estiver enchendo!
   if(enchendo){
     digitalWrite(ledBombaPin, HIGH); 
   } else {
     digitalWrite(ledBombaPin, LOW);  
   }
 
-  // 5. GUARDAR NA EEPROM (Agora a cada 0.5 segundos)
-  // 500 milissegundos = 0.5 segundos
- //ALTERADO: O sistema continua salvando na memória mesmo se estiver esvaziando com o LED apagado
+  // 5. GUARDAR NA EEPROM 
+  // 🟡 ALTERADO: O sistema continua salvando na memória mesmo se estiver esvaziando com o LED apagado
   bool sistemaAtivo = (enchendo || esvaziando);
   
   if (sistemaAtivo && (millis() - tempoUltimoSave >= 500)) {
@@ -165,11 +194,9 @@ void loop() {
   lcd.print("%");
 
   lcd.setCursor(0,1);
-  lcd.print("Cons:");
+  lcd.print("Consumo:");
   lcd.print(consumo);
   lcd.print(" L");
 
-  // Nota: Como o delay do ecrã é 500ms, o Arduino irá verificar a gravação da memória
-  // sensivelmente a cada ciclo do loop enquanto a bomba estiver ativa.
   delay(500); 
 }
